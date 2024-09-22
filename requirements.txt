@@ -1,0 +1,11 @@
+streamlit
+pandas
+joblib
+numpy
+requests
+rdkit
+scikit-learn
+matplotlib
+streamlit-option-menu
+networkx
+seaborn
