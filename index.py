@@ -49,6 +49,32 @@ def extract_molecular_properties(smiles):
     properties['Number of H-Bond Acceptors'] = Descriptors.NumHAcceptors(mol)
     return properties
 
+# SHAP analysis to explain model predictions
+import shap
+import numpy as np
+
+def shap_analysis(model, X_train_scaled, X_test_scaled):
+    # Using the TreeExplainer for the RandomForest model
+    explainer = shap.TreeExplainer(model)
+    
+    # Get SHAP values for the test set
+    shap_values = explainer.shap_values(X_test_scaled)
+
+    # Check if the output is a list (for binary classification)
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]  # Get SHAP values for the positive class
+
+    # Check if shapes are correct
+    if shap_values.shape[0] != X_test_scaled.shape[0]:
+        raise ValueError("Mismatch between SHAP values and feature matrix dimensions.")
+
+    # SHAP summary plot
+    shap.summary_plot(shap_values, X_test_scaled, plot_type="bar")
+
+    # Ensure dependence plot is using the same number of samples
+    shap.dependence_plot(0, shap_values, X_test_scaled)
+
+
 # Describe PROTAC activity based on probability
 def describe_activity(probability):
     return "Active" if probability >= 0.5 else "Inactive"
@@ -78,24 +104,6 @@ def plot_roc_auc_curve(models, X_test, y_test):
     plt.legend(loc="lower right")
     plt.grid(True)
     return plt
-
-# Function to compare accuracy with other tools
-def compare_model_performance(models, X_test, y_test):
-    results = {}
-    for name, model in models.items():
-        accuracy = model.score(X_test, y_test)
-        results[name] = accuracy
-    
-    # Comparison with other public tools
-    public_tool_accuracy = {
-        "PROflow": 0.80,
-        "PROTAC_splitter": 0.90,
-        "ROTAC-Degradation-Predictor": 0.82,
-        "RF-AI-DPAPT": 0.92
-    }
-    
-    results.update(public_tool_accuracy)
-    return results
 
 # Function to display training and test set compounds
 def display_train_test_sets(X_train, X_test, y_train, y_test, df):
@@ -224,6 +232,13 @@ def main():
         ax.set_title('Model Accuracy vs Public Tools')
         ax.tick_params(axis='x', rotation=45)
         st.pyplot(fig)
+
+	# Run SHAP analysis on the RandomForest model
+	print("\nRunning SHAP analysis for RandomForest:")
+	try:
+    	shap_analysis(trained_models["RF-AI-DPAPT"], X_train_scaled, X_test_scaled)
+	except ValueError as e:
+    	print(f"Error during SHAP analysis: {e}")
 
     if st.checkbox("Show Training and Test Set Compounds"):
         display_train_test_sets(X_train, X_test, y_train, y_test, df)
